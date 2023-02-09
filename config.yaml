@@ -43,11 +43,11 @@ sdk:
         # Sets the protocol.
         #
         # Environment variable: OTEL_EXPORTER_OTLP_PROTOCOL, OTEL_EXPORTER_OTLP_TRACES_PROTOCOL
-        protocol: http/protobuf
+        protocol: grpc/protobuf
         # Sets the endpoint.
         #
         # Environment variable: OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-        endpoint: http://localhost:4318/v1/traces
+        endpoint: localhost:4317
         # Sets the certificate.
         #
         # Environment variable: OTEL_EXPORTER_OTLP_CERTIFICATE, OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE
@@ -73,6 +73,7 @@ sdk:
         #
         # Environment variable: OTEL_EXPORTER_OTLP_TIMEOUT, OTEL_EXPORTER_OTLP_TRACES_TIMEOUT
         timeout: 10000
+        insecure: true
       # Configure the zipkin exporter.
       zipkin:
         # Sets the endpoint.
@@ -113,6 +114,7 @@ sdk:
         #
         # Environment variable: OTEL_EXPORTER_JAEGER_AGENT_HOST
         agent_port: 6832
+      console:
     # List of span processors. Each span processor has a type and args used to configure it.
     span_processors:
       # Add a batch span processor.
