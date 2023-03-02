@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
@@ -44,7 +45,7 @@ type Config struct {
 	Sdk sdk `json:"sdk"`
 }
 
-var NoOpConfig = OpenTelemetryConfiguration{}
+var NoOpConfig = OpenTelemetryConfiguration{Sdk: SDK{TracerProvider: &TracerProvider{}}}
 
 func ParseAndValidateFromConfigFile(logger *zap.Logger, filename string, schema string) (OpenTelemetryConfiguration, error) {
 	path, err := filepath.Abs(schema)
@@ -124,10 +125,7 @@ func otlpToExporter(ctx context.Context, cfg Otlp) (*otlptrace.Exporter, error) 
 	)
 }
 
-func getExporter(ctx context.Context, id string, e interface{}) (*otlptrace.Exporter, error) {
-	if e == nil {
-		return nil, fmt.Errorf("invalid configuration")
-	}
+func getExporter(ctx context.Context, id string, e interface{}) (sdktrace.SpanExporter, error) {
 	var exporterType, identifer string
 	parts := strings.SplitN(id, "/", 2)
 	exporterType = parts[0]
@@ -137,7 +135,12 @@ func getExporter(ctx context.Context, id string, e interface{}) (*otlptrace.Expo
 
 	switch exporterType {
 	case "otlp":
+		if e == nil {
+			return nil, fmt.Errorf("invalid configuration")
+		}
 		return otlpToExporter(ctx, rawToOtlp(e))
+	case "console":
+		return stdouttrace.New(stdouttrace.WithPrettyPrint())
 	}
 
 	return nil, fmt.Errorf("invalid exporter: %s %s", id, identifer)
@@ -151,7 +154,11 @@ func configureTracerProvider(logger *zap.Logger, tpCfg *TracerProvider) (func(co
 		if _, ok := tpCfg.Exporters[p.Args.Exporter]; !ok {
 			return nil, fmt.Errorf("exporter %s not found", p.Args.Exporter)
 		}
-		exporter, _ := getExporter(context.Background(), p.Args.Exporter, tpCfg.Exporters[p.Args.Exporter])
+		exporter, err := getExporter(context.Background(), p.Args.Exporter, tpCfg.Exporters[p.Args.Exporter])
+		if err != nil {
+			logger.Warn("error configuring exporter", zap.Error(err))
+			continue
+		}
 
 		switch p.Type {
 		case "batch":
@@ -171,19 +178,19 @@ func configureTracerProvider(logger *zap.Logger, tpCfg *TracerProvider) (func(co
 	}, nil
 }
 
-func Configure(logger *zap.Logger, cfg OpenTelemetryConfiguration) func() {
+func Configure(logger *zap.Logger, cfg OpenTelemetryConfiguration) func() error {
 	if cfg.Sdk.Disabled {
 		logger.Info("SDK disabled")
-		return func() {}
+		return func() error { return nil }
 	}
 
 	cleanupTracerProvider, err := configureTracerProvider(logger, cfg.Sdk.TracerProvider)
 	if err != nil {
 		logger.Error("error configuring tracer provider", zap.Error(err))
-		return func() {}
+		return func() error { return nil }
 	}
 
-	return func() {
-		cleanupTracerProvider(context.Background())
+	return func() error {
+		return cleanupTracerProvider(context.Background())
 	}
 }

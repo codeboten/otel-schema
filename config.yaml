@@ -146,7 +146,7 @@ sdk:
       # Add a batch span processor configured with zipkin exporter. For full description of options see sdk.tracer_provider.span_processors[0].
       - type: batch
         args:
-          exporter: zipkin
+          exporter: console
       # Add a batch span processor configured with jaeger exporter. For full description of options see sdk.tracer_provider.span_processors[0].
       - type: batch
         args:

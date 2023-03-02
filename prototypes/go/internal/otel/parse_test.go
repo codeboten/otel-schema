@@ -21,12 +21,17 @@ func TestConfigure(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:   "no-op config",
+			config: NoOpConfig,
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := zaptest.NewLogger(t)
-			Configure(logger, tc.config)
+			cleanup := Configure(logger, tc.config)
+			require.NoError(t, cleanup())
 		})
 	}
 }
@@ -46,13 +51,38 @@ func TestGetExporter(t *testing.T) {
 			expectError:      true,
 		},
 		{
+			name:         "otlp exporter insecure",
+			exporterType: "otlp/exporter1",
+			cfg: map[string]interface{}{
+				"insecure": true,
+				"endpoint": "localhost:4317",
+			},
+			expectedExporter: nil,
+			expectError:      false,
+		},
+		{
 			name:         "otlp exporter",
 			exporterType: "otlp/exporter1",
 			cfg: map[string]interface{}{
-				"otlp/exporter1": Otlp{
-					Insecure: &[]bool{true}[0],
-				},
+				"endpoint": "localhost:4317",
 			},
+			expectedExporter: nil,
+			expectError:      false,
+		},
+		{
+			name:         "otlp http exporter",
+			exporterType: "otlp/exporter2",
+			cfg: map[string]interface{}{
+				"endpoint": "localhost:4317",
+				"protocol": "http/protobuf",
+			},
+			expectedExporter: nil,
+			expectError:      false,
+		},
+		{
+			name:             "console exporter",
+			exporterType:     "console",
+			cfg:              map[string]interface{}{},
 			expectedExporter: nil,
 			expectError:      false,
 		},
@@ -65,6 +95,7 @@ func TestGetExporter(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+			// TODO: add test to validate exporter
 			// require.Equal(t, tc.expectedExporter, exporter)
 		})
 	}

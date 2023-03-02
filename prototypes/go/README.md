@@ -1,5 +1,7 @@
 # Config prototype with Go
 
+This initial prototype includes every component that could be configured within it.
+
 ## Regenerate model
 
 The model is generated from the json schema using [gojsonschema](https://github.com/xeipuuv/gojsonschema).
@@ -26,5 +28,3 @@ if _, ok := raw["always_on"]; !ok {
     return fmt.Errorf("field always_on: required")
 }
 ```
-
-- provider shutdown causes panic
